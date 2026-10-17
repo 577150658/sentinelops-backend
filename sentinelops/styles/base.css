@@ -1,0 +1,17 @@
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  background:var(--bg); color:var(--text); font-family:var(--sans);
+  font-size:13px; line-height:1.55; -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+body::before {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(900px 500px at 12% -8%, rgba(0,217,163,.07), transparent 60%),
+    radial-gradient(700px 460px at 92% 4%, rgba(77,171,247,.06), transparent 62%);
+}
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#253044; border-radius:99px; }
+::-webkit-scrollbar-thumb:hover { background:#33415a; }
+.spacer { flex:1; }

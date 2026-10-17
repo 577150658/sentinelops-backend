@@ -1,0 +1,12 @@
+﻿__pycache__/
+*.py[cod]
+*.db
+*.db-journal
+.env
+.venv/
+venv/
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+node_modules/

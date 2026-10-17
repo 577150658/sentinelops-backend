@@ -1,0 +1,11 @@
+:root {
+  --bg:#0a0e14; --panel:#111721; --panel-2:#161d29; --panel-3:#1b2432;
+  --border:#1e2836; --border-soft:#182130;
+  --text:#d6e0ec; --text-dim:#8b9bb0; --muted:#6b7a8f;
+  --accent:#00d9a3; --accent-dim:#00d9a322; --accent-glow:0 0 24px rgba(0,217,163,.25);
+  --blue:#4dabf7; --crit:#ff4d4f; --high:#ff8c1a; --med:#ffd60a; --low:#4dabf7; --info:#6b7a8f;
+  --mono:"JetBrains Mono","SF Mono","Cascadia Code",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --topbar-h:56px; --sidebar-w:216px; --aside-w:320px;
+}

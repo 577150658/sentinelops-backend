@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+"""
+fix_seed.py
+重写完整的 seed.py，包含 tasks / findings / approvals / skills / audit_logs
+"""
+
+import sys
+from pathlib import Path
+
+
+def resolve_back():
+    if len(sys.argv) >= 2:
+        return Path(sys.argv[1]).resolve()
+    print("后端目录（含 app/）: ", end="")
+    return Path(input().strip().strip('"').strip("'")).resolve()
+
+
+def main():
+    back = resolve_back()
+    print(f"▶ 后端: {back}")
+
+    seed_py = back / "app" / "db" / "seed.py"
+    if not seed_py.exists():
+        print("❌ 找不到 app/db/seed.py")
+        sys.exit(1)
+
+    # 备份
+    backup = seed_py.with_suffix(".py.bak")
+    backup.write_text(seed_py.read_text(encoding="utf-8"), encoding="utf-8")
+    print(f"  · 已备份到 {backup.name}")
+
+    # 完整重写
+    seed_py.write_text('''"""种子数据：与前端 seed.js 对齐"""
+from datetime import datetime
+
+from app.db.session import SessionLocal
+from app.db.models import Task, Finding, Approval, Skill, AuditLog
+
+
+def seed_if_empty() -> None:
+    db = SessionLocal()
+    try:
+        # ---------- 任务 ----------
+        if db.query(Task).count() == 0:
+            print("[seed] 初始化任务...")
+            tasks = [
+                Task(id="0347", title="子域枚举 acme.com", phase="侦察",
+                     status="done", risk="low", agent="recon-01",
+                     progress=100, source="template", depends_on=""),
+                Task(id="0348", title="HTTP 响应指纹采集", phase="侦察",
+                     status="done", risk="low", agent="recon-01",
+                     progress=100, source="template", depends_on=""),
+                Task(id="0341", title="Nmap 全端口扫描 10.0.3.0/24", phase="扫描",
+                     status="running", risk="low", agent="recon-02",
+                     progress=72, source="planner", depends_on="0347"),
+                Task(id="0344", title="Nuclei 模板扫描 api.acme.com", phase="扫描",
+                     status="done", risk="low", agent="scan-03",
+                     progress=100, source="planner", depends_on="0347"),
+                Task(id="0345", title="目录爆破 /admin 路径", phase="枚举",
+                     status="done", risk="medium", agent="fuzz-01",
+                     progress=100, source="planner", depends_on="0347"),
+                Task(id="0342", title="Redis 未授权访问验证", phase="利用",
+                     status="blocked", risk="critical", agent="exploit-01",
+                     progress=0, source="planner", depends_on="0341",
+                     command="redis-cli -h 10.0.3.44 -p 6379 INFO keyspace"),
+                Task(id="0343", title="SSH 弱口令爆破 10.0.5.12", phase="利用",
+                     status="blocked", risk="high", agent="exploit-01",
+                     progress=0, source="planner", depends_on="0341",
+                     command="hydra -l admin -P /wordlists/top1k.txt 10.0.5.12 ssh"),
+                Task(id="0346", title="API 端点 SQL 注入验证", phase="利用",
+                     status="done", risk="critical", agent="exploit-02",
+                     progress=100, source="planner", depends_on="0344,0345",
+                     command="sqlmap -u https://api.acme.com/v1/search?q=1 --batch"),
+            ]
+            db.add_all(tasks)
+            db.commit()
+
+        # ---------- 漏洞发现 ----------
+        if db.query(Finding).count() == 0:
+            print("[seed] 初始化漏洞发现...")
+            findings = [
+                Finding(id="F-01", severity="critical", title="API 端点 SQL 注入",
+                        target="api.acme.com", status="verified", cvss=9.8, tool="Nuclei"),
+                Finding(id="F-02", severity="critical", title="Redis 未授权访问",
+                        target="10.0.3.44:6379", status="pending", cvss=9.1, tool="Nmap"),
+                Finding(id="F-03", severity="high", title="任意文件读取（路径穿越）",
+                        target="files.acme.com", status="verified", cvss=7.5, tool="Burp"),
+                Finding(id="F-04", severity="high", title="SSH 弱口令",
+                        target="10.0.5.12:22", status="pending", cvss=7.2, tool="Hydra"),
+                Finding(id="F-05", severity="high", title="备份文件可公开访问",
+                        target="files.acme.com", status="verified", cvss=7.0, tool="ffuf"),
+                Finding(id="F-06", severity="med", title="TLS 证书过期",
+                        target="mail.acme.com", status="verified", cvss=5.3, tool="Nuclei"),
+                Finding(id="F-07", severity="med", title="缺少安全响应头",
+                        target="api.acme.com", status="verified", cvss=4.3, tool="Nuclei"),
+                Finding(id="F-08", severity="low", title="服务器版本信息泄露",
+                        target="10.0.3.44", status="fp", cvss=2.1, tool="Nmap"),
+                Finding(id="F-09", severity="low", title="目录列表启用",
+                        target="files.acme.com", status="verified", cvss=3.1, tool="ffuf"),
+            ]
+            db.add_all(findings)
+            db.commit()
+
+        # ---------- 审批 ----------
+        if db.query(Approval).count() == 0:
+            print("[seed] 初始化审批...")
+            approvals = [
+                Approval(id="A-01", task_id="0342", title="Redis 未授权访问验证",
+                         desc="将对 10.0.3.44:6379 发起未授权访问测试，读取 keyspace 信息。",
+                         command="redis-cli -h 10.0.3.44 -p 6379 INFO keyspace",
+                         risk="critical"),
+                Approval(id="A-02", task_id="0343", title="SSH 弱口令爆破",
+                         desc="将对 10.0.5.12:22 发起字典爆破，字典规模 1000 条。",
+                         command="hydra -l admin -P /wordlists/top1k.txt 10.0.5.12 ssh",
+                         risk="high"),
+            ]
+            db.add_all(approvals)
+            db.commit()
+
+        # ---------- Skill ----------
+        if db.query(Skill).count() == 0:
+            print("[seed] 初始化 Skill...")
+            skills = [
+                Skill(id="S-01", icon="🎯", name="sql-injection-probe", version="v1.2.0",
+                      author="security-team · 官方仓库",
+                      desc="Web 应用 SQL 注入检测与验证，覆盖 OWASP A03，支持盲注与时间盲注确认。",
+                      tags="web,sqli,T1190", risk="high", tools=3, runs=42, enabled=True),
+                Skill(id="S-02", icon="🔍", name="subdomain-enum", version="v2.0.1",
+                      author="recon-lab · 官方仓库",
+                      desc="被动 + 主动子域枚举，整合证书透明度日志、DNS 字典与搜索引擎结果。",
+                      tags="recon,dns,T1590", risk="low", tools=2, runs=128, enabled=True),
+                Skill(id="S-03", icon="⚡", name="redis-unauth-check", version="v1.0.3",
+                      author="community · 社区",
+                      desc="Redis 未授权访问检测，读取 keyspace 信息并评估数据敏感度。",
+                      tags="redis,exposure,T1190", risk="med", tools=1, runs=17, enabled=True),
+                Skill(id="S-04", icon="🔑", name="ssh-brute", version="v1.4.0",
+                      author="security-team · 官方仓库",
+                      desc="SSH 弱口令检测，支持字典分级与速率限制，所有执行均需人工审批。",
+                      tags="ssh,brute,T1110", risk="high", tools=1, runs=9, enabled=True),
+                Skill(id="S-05", icon="🛡️", name="tls-audit", version="v1.1.2",
+                      author="community · 社区",
+                      desc="TLS/SSL 配置审计，检测协议版本、加密套件、证书链与常见配置缺陷。",
+                      tags="tls,audit", risk="low", tools=2, runs=64, enabled=True),
+                Skill(id="S-06", icon="📡", name="api-fuzz", version="v0.9.4",
+                      author="local-import · 本地导入",
+                      desc="REST/GraphQL API 参数模糊测试，自动识别参数类型并生成边界值载荷。",
+                      tags="api,fuzz,graphql", risk="med", tools=2, runs=3, enabled=True),
+                Skill(id="S-07", icon="⬆️", name="privesc-linux", version="v1.0.0",
+                      author="local-import · 本地导入",
+                      desc="Linux 本地提权路径检查，枚举 SUID、sudo 配置、计划任务与内核版本。",
+                      tags="linux,privesc,T1068", risk="crit", tools=1, runs=0, enabled=False),
+                Skill(id="S-08", icon="📦", name="smb-enum", version="v1.3.1",
+                      author="community · 社区",
+                      desc="SMB 共享枚举与会话信息收集，识别匿名访问与可写共享。",
+                      tags="smb,enum,T1135", risk="low", tools=1, runs=21, enabled=True),
+            ]
+            db.add_all(skills)
+            db.commit()
+
+        # ---------- 审计日志 ----------
+        if db.query(AuditLog).count() == 0:
+            print("[seed] 初始化审计日志...")
+            seed_logs = [
+                ("09:35:00", "operator", "停止", "sandbox · kali-02", "medium"),
+                ("09:36:12", "admin", "配置", "model · deepseek-reasoner", "info"),
+                ("09:38:44", "operator", "执行", "task-0345 · ffuf", "medium"),
+                ("09:40:18", "system", "执行", "task-0344 · nuclei", "low"),
+                ("09:41:30", "operator", "拒绝", "task-0339 · metasploit", "high"),
+                ("09:42:55", "approver", "批准", "task-0342 · redis", "critical"),
+                ("09:43:02", "operator", "执行", "task-0341 · nmap", "low"),
+            ]
+            prev = "genesis"
+            for t, actor, action, target, risk in seed_logs:
+                h = _compute_hash(prev, {"time": t, "actor": actor,
+                                          "action": action, "target": target})
+                db.add(AuditLog(time=t, actor=actor, action=action,
+                                target=target, risk=risk, hash=h, prev_hash=prev))
+                prev = h
+            db.commit()
+
+        print("[seed] 种子数据初始化完成")
+
+    finally:
+        db.close()
+
+
+def _compute_hash(prev_hash: str, record: dict) -> str:
+    import hashlib
+    import json
+    payload = json.dumps(record, sort_keys=True) + prev_hash
+    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+''', encoding="utf-8")
+
+    print("  ✓ app/db/seed.py 已完整重写")
+
+
+if __name__ == "__main__":
+    main()
